@@ -1,46 +1,309 @@
-# Getting Started with Create React App
+# React With Typescript
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+---
 
-## Available Scripts
+how to create app
+With reactjs, command create a new project
 
-In the project directory, you can run:
+```c
+npx create-react-app reactapp
+```
 
-### `npm start`
+You will see it creates a folder called reactapp
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+---
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+As for react with ts, you use this command to create a new project
 
-### `npm test`
+```c
+npx create-react-app my-app --template typescript
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Working with components
 
-### `npm run build`
+-   With component then you have to pass like that:
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+```c
+import React from "react";
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+const Todos: React.FC<{ items: string[] }> = (props) => {
+    return (
+        <ul>
+            {props.items.map((item) => (
+                <li key={item}>{item}</li>
+            ))}
+        </ul>
+    );
+};
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+export default Todos;
 
-### `npm run eject`
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+-   Should create a model and import into the component and create using that model
+    File todo.ts in models
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+```c
+class Todo {
+    id: string;
+    text: string;
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+    constructor(todoText: string) {
+        this.text = todoText;
+        this.id = new Date().toISOString();
+    }
+}
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+export default Todo;
+```
 
-## Learn More
+In App.tsx
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+```c
+import { useState } from "react";
+import Todos from "./components/Todos";
+import Todo from "./models/todo";
+import NewTodo from "./components/NewTodo";
+import "./App.css";
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+function App() {
+    const [todos, setTodos] = useState<Todo[]>([]);
+
+    // const todos = [
+    //     new Todo("Nguyễn Tuấn Anh đẹp trai"),
+    //     new Todo("saubanh05062001@gmail.com"),
+    // ];
+
+    const addTodoHandler = (todoText: string) => {
+        const newTodo = new Todo(todoText);
+        setTodos((prevTodos) => {
+            return prevTodos.concat(newTodo);
+        });
+    };
+
+    const removeTodoHandler = (todoId: string) => {
+        setTodos((prevTodos) => {
+            return prevTodos.filter((todo) => todo.id !== todoId);
+        });
+    };
+
+    return (
+        <div>
+            <NewTodo onAddTodo={addTodoHandler} />
+            <Todos items={todos} onRemoveTodo={removeTodoHandler} />
+        </div>
+    );
+}
+
+export default App;
+```
+
+Component Todo.tsx
+
+```c
+import React from "react";
+import Todo from "../models/todo";
+
+const Todos: React.FC<{ items: Todo[] }> = (props) => {
+    return (
+        <ul>
+            {props.items.map((item) => (
+                <li key={item.id}>{item.text}</li>
+            ))}
+        </ul>
+    );
+};
+
+export default Todos;
+```
+
+Component TodoItem.tsx
+
+```c
+const TodoItem: React.FC<{ text: string }> = (props) => {
+    return <li>{props.text}</li>;
+};
+
+export default TodoItem;
+```
+
+Component NewTodo.tsx
+
+```c
+import { useRef } from "react";
+
+import classes from "./NewTodo.module.css";
+
+const NewTodo: React.FC<{ onAddTodo: (text: string) => void }> = (props) => {
+    const todoTextInputRef = useRef<HTMLInputElement>(null);
+
+    const submitHandler = (event: React.FormEvent) => {
+        event.preventDefault();
+
+        const enteredText = todoTextInputRef.current!.value;
+
+        if (enteredText.trim().length === 0) {
+            //? throw new Error
+            return;
+        }
+        props.onAddTodo(enteredText);
+    };
+
+    return (
+        <form onSubmit={submitHandler} className={classes.form}>
+            <label htmlFor="text">Todo text</label>
+            <input type="text" id="text" ref={todoTextInputRef} />
+            <button>Add Todo</button>
+        </form>
+    );
+};
+
+export default NewTodo;
+```
+
+## Covert to useContext
+
+Create store
+
+```c
+import React, { useState } from "react";
+import Todo from "../models/todo";
+
+type TodosContextObj = {
+    items: Todo[];
+    addTodo: (text: string) => void;
+    removeTodo: (id: string) => void;
+};
+
+export const TodosContext = React.createContext<TodosContextObj>({
+    items: [],
+    addTodo: () => {},
+    removeTodo: (id: string) => {},
+});
+
+const TodosContextProvider: React.FC<{ children: React.ReactNode }> = (
+    props
+) => {
+    const [todos, setTodos] = useState<Todo[]>([]);
+
+    const addTodoHandler = (todoText: string) => {
+        const newTodo = new Todo(todoText);
+        setTodos((prevTodos) => {
+            return prevTodos.concat(newTodo);
+        });
+    };
+
+    const removeTodoHandler = (todoId: string) => {
+        setTodos((prevTodos) => {
+            return prevTodos.filter((todo) => todo.id !== todoId);
+        });
+    };
+
+    const contextValue: TodosContextObj = {
+        items: todos,
+        addTodo: addTodoHandler,
+        removeTodo: removeTodoHandler,
+    };
+
+    return (
+        <TodosContext.Provider value={contextValue}>
+            {props.children}
+        </TodosContext.Provider>
+    );
+};
+
+export default TodosContextProvider;
+```
+
+In App.tsx
+
+```c
+import Todos from "./components/Todos";
+import NewTodo from "./components/NewTodo";
+import TodosContextProvider from "./store/todos-context";
+import "./App.css";
+
+function App() {
+    return (
+        <TodosContextProvider>
+            <NewTodo />
+            <Todos />
+        </TodosContextProvider>
+    );
+}
+
+export default App;
+```
+
+Component Todo.tsx
+
+```c
+import React, { useContext } from "react";
+import TodoItem from "./TodoItem";
+import { TodosContext } from "../store/todos-context";
+import classes from "./Todos.module.css";
+
+const Todos: React.FC = () => {
+    const todosCtx = useContext(TodosContext);
+    return (
+        <ul className={classes.todos}>
+            {todosCtx.items.map((item) => (
+                <TodoItem
+                    key={item.id}
+                    text={item.text}
+                    onRemoveTodo={todosCtx.removeTodo.bind(null, item.id)}
+                />
+            ))}
+        </ul>
+    );
+};
+
+export default Todos;
+```
+
+Component TodoItem.tsx
+
+```c
+const TodoItem: React.FC<{ text: string }> = (props) => {
+    return <li>{props.text}</li>;
+};
+
+export default TodoItem;
+```
+
+Component NewTodo.tsx
+
+```c
+import { useRef, useContext } from "react";
+import { TodosContext } from "../store/todos-context";
+
+import classes from "./NewTodo.module.css";
+
+const NewTodo: React.FC = () => {
+    const todoCtx = useContext(TodosContext);
+
+    const todoTextInputRef = useRef<HTMLInputElement>(null);
+
+    const submitHandler = (event: React.FormEvent) => {
+        event.preventDefault();
+
+        const enteredText = todoTextInputRef.current!.value;
+
+        if (enteredText.trim().length === 0) {
+            //? throw new Error
+            return;
+        }
+        todoCtx.addTodo(enteredText);
+    };
+
+    return (
+        <form onSubmit={submitHandler} className={classes.form}>
+            <label htmlFor="text">Todo text</label>
+            <input type="text" id="text" ref={todoTextInputRef} />
+            <button>Add Todo</button>
+        </form>
+    );
+};
+
+export default NewTodo;
+```
